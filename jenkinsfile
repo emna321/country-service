@@ -1,36 +1,18 @@
 pipeline {
     agent any
-
-    tools {
-        maven 'mymaven'
-    }
-
+    tools { maven 'mymaven' }
     stages {
         stage('Checkout code') {
-            steps {
-                git branch: 'main',
-                    url: 'https://github.com/emna321/country-service.git'
-            }
+            steps { git branch: 'main', url: 'https://github.com/emna321/country-service.git' }
         }
-
-        stage('Compile code') {
-            steps {
-                sh 'mvn compile'
-            }
-        }
-
-        stage('Test code') {
-            steps {
-                sh 'mvn test'
-            }
+        stage('Compile, test, package') {
+            steps { sh 'mvn clean verify' }
             post {
-                always {
-                    junit allowEmptyResults: true,
-                          testResults: '**/target/surefire-reports/*.xml'
+                success {
+                    junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
                 }
             }
         }
-
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('MySonarQubeServer') {
@@ -38,12 +20,20 @@ pipeline {
                 }
             }
         }
-
-        stage('Package code') {
+        stage('Deploy jar to Nexus') {
+            steps { sh 'mvn deploy -DskipTests' }
+        }
+        stage('Store reports in Nexus') {
             steps {
-                sh 'mvn package'
+                sh 'zip -r jacoco-report.zip target/site/jacoco'
+                sh 'zip -r surefire-reports.zip target/surefire-reports'
+                withCredentials([usernamePassword(credentialsId: 'nexus-cred',
+                                                  usernameVariable: 'NUSER',
+                                                  passwordVariable: 'NPASS')]) {
+                    sh 'curl -u $NUSER:$NPASS --upload-file jacoco-report.zip http://localhost:8081/repository/reports/${BUILD_NUMBER}/jacoco-report.zip'
+                    sh 'curl -u $NUSER:$NPASS --upload-file surefire-reports.zip http://localhost:8081/repository/reports/${BUILD_NUMBER}/surefire-reports.zip'
+                }
             }
         }
     }
 }
-
