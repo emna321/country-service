@@ -1,23 +1,50 @@
+```groovy
 pipeline {
     agent any
-    tools { maven 'mymaven' }
+
+    tools {
+        maven 'mymaven'
+    }
+
     stages {
         stage('Checkout code') {
-            steps { git branch: 'main', url: 'https://github.com/emna321/country-service.git' }
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/emna321/country-service.git'
+            }
         }
+
         stage('Compile code') {
-            steps { sh 'mvn compile' }
+            steps {
+                sh 'mvn compile'
+            }
         }
+
         stage('Test code') {
-            steps { sh 'mvn test' }
+            steps {
+                sh 'mvn test'
+            }
             post {
-                success {
-                    junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
+                always {
+                    junit allowEmptyResults: true,
+                          testResults: '**/target/surefire-reports/*.xml'
                 }
             }
         }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('MySonarQubeServer') {
+                    sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=country-service1'
+                }
+            }
+        }
+
         stage('Package code') {
-            steps { sh 'mvn package' }
+            steps {
+                sh 'mvn package'
+            }
         }
     }
 }
+```
