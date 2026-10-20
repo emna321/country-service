@@ -21,7 +21,7 @@ pipeline {
         }
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv(installationName: 'MySonarQubeServer', credentialsId: 'sonarqubePWD') {
+                withSonarQubeEnv('MySonarQubeServer') {
                     sh "mvn sonar:sonar -Dsonar.projectKey=country-service -Dsonar.projectName='country-service'"
                 }
             }
